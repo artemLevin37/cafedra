@@ -75,9 +75,12 @@
     const wrap = el("div", "fade");
     wrap.append(el("h1", "q", questions[i].q));
     const opts = el("div", "opts");
+    const shownAt = Date.now();
     questions[i].options.forEach((text, idx) => {
       const b = el("button", "opt", text);
       b.onclick = () => {
+        // Двойной клик не должен отвечать сразу на следующий вопрос
+        if (Date.now() - shownAt < 500) return;
         b.classList.add("picked");
         opts.querySelectorAll("button").forEach(x => (x.disabled = true));
         if (tg) tg.HapticFeedback.impactOccurred("light");
