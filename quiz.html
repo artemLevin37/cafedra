@@ -97,8 +97,14 @@
     const wrap = el("div", "center fade");
     wrap.append(el("div", "big", "✓"), el("p", "sub", "Ответы отправлены — результат придёт в чат с ботом."));
     screen.append(wrap);
-    // sendData отправляет ответы боту и сам закрывает мини-приложение
-    if (tg && tg.initData) setTimeout(() => tg.sendData(JSON.stringify({ answers })), 600);
+    // sendData отправляет ответы боту и сам закрывает мини-приложение.
+    // При запуске с кнопки клавиатуры initData пустой, поэтому проверяем platform.
+    if (tg && tg.platform !== "unknown") {
+      setTimeout(() => {
+        try { tg.sendData(JSON.stringify({ answers })); }
+        catch (e) { wrap.append(el("p", "sub", "Не удалось отправить ответы. Закрой окно и нажми «Пройти тест» ещё раз.")); }
+      }, 600);
+    }
   }
 
   show(0);
