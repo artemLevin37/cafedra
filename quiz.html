@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Кафедра борьбы — тест</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #000; --fg: #fff; --muted: #8a8a8a; --line: #2a2a2a; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font-family: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+    -webkit-font-smoothing: antialiased;
+  }
+  .top { display: flex; justify-content: space-between; align-items: center; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .bar { height: 2px; background: var(--line); margin: 14px 0 0; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--fg); transition: width .35s ease; }
+  main { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 32px 0; }
+  .q { font-size: 26px; font-weight: 800; line-height: 1.2; letter-spacing: -.01em; margin-bottom: 28px; }
+  .opts { display: flex; flex-direction: column; gap: 10px; }
+  .opt {
+    width: 100%; text-align: left; font: inherit; font-size: 17px; font-weight: 600;
+    color: var(--fg); background: transparent; border: 1.5px solid var(--fg); border-radius: 14px;
+    padding: 16px 18px; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .opt:active, .opt.picked { background: var(--fg); color: var(--bg); }
+  .fade { animation: fade .3s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .center { text-align: center; }
+  .big { font-size: 64px; font-weight: 800; letter-spacing: -.03em; }
+  .sub { color: var(--muted); margin-top: 10px; font-size: 16px; line-height: 1.5; }
+</style>
+</head>
+<body>
+  <div class="top"><span>Кафедра борьбы</span><span id="counter"></span></div>
+  <div class="bar"><i id="progress"></i></div>
+  <main id="screen"></main>
+
+<script>
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor("#000000"); tg.setBackgroundColor("#000000"); }
+
+  // Вопросы приходят от бота в параметре ?q= (base64url JSON). Без него — демо.
+  function loadQuestions() {
+    const p = new URLSearchParams(location.search).get("q");
+    if (!p) return Array.from({ length: 5 }, (_, i) => ({ q: `Демо-вопрос ${i + 1}`, options: ["Вариант A", "Вариант B", "Вариант C"] }));
+    const b64 = p.replace(/-/g, "+").replace(/_/g, "/");
+    const bytes = Uint8Array.from(atob(b64 + "===".slice((b64.length + 3) % 4)), c => c.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }
+
+  const questions = loadQuestions();
+  const answers = [];
+  const screen = document.getElementById("screen");
+  const counter = document.getElementById("counter");
+  const progress = document.getElementById("progress");
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function show(i) {
+    counter.textContent = `${i + 1} / ${questions.length}`;
+    progress.style.width = `${(i / questions.length) * 100}%`;
+    screen.replaceChildren();
+    const wrap = el("div", "fade");
+    wrap.append(el("h1", "q", questions[i].q));
+    const opts = el("div", "opts");
+    questions[i].options.forEach((text, idx) => {
+      const b = el("button", "opt", text);
+      b.onclick = () => {
+        b.classList.add("picked");
+        opts.querySelectorAll("button").forEach(x => (x.disabled = true));
+        if (tg) tg.HapticFeedback.impactOccurred("light");
+        answers[i] = idx;
+        setTimeout(() => (i + 1 < questions.length ? show(i + 1) : finish()), 250);
+      };
+      opts.append(b);
+    });
+    wrap.append(opts);
+    screen.append(wrap);
+  }
+
+  function finish() {
+    progress.style.width = "100%";
+    counter.textContent = "";
+    screen.replaceChildren();
+    const wrap = el("div", "center fade");
+    wrap.append(el("div", "big", "✓"), el("p", "sub", "Ответы отправлены — результат придёт в чат с ботом."));
+    screen.append(wrap);
+    // sendData отправляет ответы боту и сам закрывает мини-приложение
+    if (tg && tg.initData) setTimeout(() => tg.sendData(JSON.stringify({ answers })), 600);
+  }
+
+  show(0);
+</script>
+</body>
+</html>
